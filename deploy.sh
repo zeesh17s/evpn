@@ -274,7 +274,8 @@ docker exec -d PE-1 sh -c "ip link add custz type vrf table 32  && \
                            ip route add table 32 unreachable default metric 4278198272  && \                          
                            ip link add br100 type bridge && \
                            ip link set br100 master custz && \                                                 
-                           ip addr add 13.13.1.8/24 dev br100 && \                                         
+                           ip addr add 13.13.1.8/24 dev br100 && \
+                           ip addr delete 13.13.1.8/25 dev eth3 && \
                            ip link add vni100 type vxlan local $lo_pe1 dstport 4789 id 100 nolearning && \
                            ip link set vni100 master br100 addrgenmode none && \
                            ip link set vni100 type bridge_slave neigh_suppress on learning off && \
@@ -287,7 +288,8 @@ docker exec -d PE-2 sh -c "ip link add custz type vrf table 52  && \
                            ip route add table 32 unreachable default metric 4278198272 && \
                            ip link add br100 type bridge && \
                            ip link set br100 master custz && \                                                  
-                           ip addr add 13.13.1.132/24 dev br100 && \                           
+                           ip addr add 13.13.1.132/24 dev br100 && \
+                           ip addr delete 13.13.1.132/25 dev eth3 && \ 
                            ip link add vni100 type vxlan local $lo_pe2 dstport 4789 id 100 nolearning && \
                            ip link set vni100 master br100 addrgenmode none && \
                            ip link set vni100 type bridge_slave neigh_suppress on learning off && \
