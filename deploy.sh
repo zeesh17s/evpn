@@ -268,33 +268,40 @@ docker exec -d cust_x_b vtysh -c "configure" \
 
 # Cust Z
 # VRF interface config  
-# L2VNI 
+# L2VNI
+vlanid=10
 docker exec -d PE-1 sh -c "ip link add custz type vrf table 32  && \
                            ip link set dev custz up  && \                   
                            ip route add table 32 unreachable default metric 4278198272  && \                          
                            ip link add br100 type bridge && \
-                           ip link set br100 master custz && \                                                 
+                           ip link set br100 master custz && \
+                           ip link set eth3 master custz && \
                            ip addr add 13.13.1.8/24 dev br100 && \
                            ip addr delete 13.13.1.8/25 dev eth3 && \
                            ip link add vni100 type vxlan local $lo_pe1 dstport 4789 id 100 nolearning && \
                            ip link set vni100 master br100 addrgenmode none && \
                            ip link set vni100 type bridge_slave neigh_suppress on learning off && \
-                           ip link set dev eth3 master br100 && \                        
+                           ip link add link eth3 name eth3.$vlanid type vlan id $vlanid
+                           ip link set dev eth3.$vlanid master br100 && \                 
                            ip link set vni100 up && \
-                           ip link set br100 up " 
+                           ip link set eth3.$vlanid up && \
+                           ip link set br100 up "
 
 docker exec -d PE-2 sh -c "ip link add custz type vrf table 52  && \
                            ip link set dev custz up  && \                       
                            ip route add table 32 unreachable default metric 4278198272 && \
                            ip link add br100 type bridge && \
-                           ip link set br100 master custz && \                                                  
+                           ip link set br100 master custz && \
+                           ip link set eth3 master custz && \
                            ip addr add 13.13.1.132/24 dev br100 && \
-                           ip addr delete 13.13.1.132/25 dev eth3 && \ 
+                           ip addr delete 13.13.1.132/25 dev eth3 && \                         
                            ip link add vni100 type vxlan local $lo_pe2 dstport 4789 id 100 nolearning && \
                            ip link set vni100 master br100 addrgenmode none && \
                            ip link set vni100 type bridge_slave neigh_suppress on learning off && \
-                           ip link set dev eth3 master br100 && \                     
+                           ip link add link eth3 name eth3.$vlanid type vlan id $vlanid
+                           ip link set dev eth3.$vlanid master br100 && \                     
                            ip link set vni100 up && \
+                           ip link set eth3.$vlanid up && \
                            ip link set br100 up"
 
 
@@ -334,11 +341,20 @@ docker exec -d PE-2 vtysh -c "configure" \
                           -c "exit-address-family" \
                           -c "exit" 
 
-
+echo "initializing cust Z" 
 docker run -itd --name cust_z_a -h cust_z_a --network CustZ_PE1 --ip 13.13.1.15 \
-    --cap-add=NET_ADMIN --cap-add SYS_ADMIN ldebian  bash
+    --cap-add=NET_ADMIN --cap-add SYS_ADMIN alpine  /bin/sh
 docker run -itd --name cust_z_b -h cust_z_b --network PE2_CustZ --ip 13.13.1.135  \
-    --cap-add=NET_ADMIN --cap-add SYS_ADMIN ldebian bash
+    --cap-add=NET_ADMIN --cap-add SYS_ADMIN alpine /bin/sh
 
-docker exec cust_z_a sh -c  "ip route delete default && ip route add default via 13.13.1.8 dev eth0"
-docker exec cust_z_b sh -c  "ip route delete default && ip route add default via 13.13.1.132 dev eth0"
+docker exec cust_z_a sh -c  "ip link add link eth0 name eth0.$vlanid type vlan id $vlanid && \
+                             ip address delete 13.13.1.15/25 dev eth0 && \
+                             ip address add 13.13.1.15/25 dev eth0.$vlanid && \
+                             ip link set eth0.$vlanid up && \
+                             ip route add default via 13.13.1.8 dev eth0.$vlanid"
+
+docker exec cust_z_b sh -c  "ip link add link eth0 name eth0.$vlanid type vlan id $vlanid && \
+                             ip address delete 13.13.1.135/25 dev eth0 && \
+                             ip address add 13.13.1.135/25 dev eth0.$vlanid && \
+                             ip link set eth0.$vlanid up && \
+                             ip route add default via 13.13.1.132 dev eth0.$vlanid "     
